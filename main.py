@@ -146,3 +146,5 @@ def teklif_hesapla(istek: TeklifIstegi, db: Session = Depends(get_db)):
         "genel_toplam": genel_toplam,
         "kalemler": kalem_detaylari,
     }
+from database import Base, engine
+Base.metadata.create_all(bind=engine)
