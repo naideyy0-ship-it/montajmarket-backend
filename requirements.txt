@@ -1,3 +1,6 @@
 fastapi
 uvicorn[standard]
+fastapi
+uvicorn
+psycopg2-binary
 
