@@ -1,15 +1,3 @@
-[
-  { "ad": "Çelik Konstrüksiyon İmalatı",      "birim_fiyat": 450.0, "birim": "kg" },
-  { "ad": "Çelik Konstrüksiyon Montajı",     "birim_fiyat": 500.0, "birim": "kg" },
-  { "ad": "Çelik Konstrüksiyon Demontaj",    "birim_fiyat": 180.0, "birim": "kg" },
-  { "ad": "Sandviç Panel Çatı Montajı",      "birim_fiyat": 350.0, "birim": "m2" },
-  { "ad": "Sandviç Panel Cephe Montajı",     "birim_fiyat": 320.0, "birim": "m2" },
-  { "ad": "Eski Çatı / Panel Sökümü",        "birim_fiyat": 120.0, "birim": "m2" },
-  { "ad": "Trapez Saç Kaplama",              "birim_fiyat": 220.0, "birim": "m2" },
-  { "ad": "Askı Detayı / Ankraj Montajı",    "birim_fiyat": 150.0, "birim": "adet" },
-  { "ad": "Korkuluk / Platform Montajı",     "birim_fiyat": 400.0, "birim": "m" },
-  { "ad": "Çelik İmalat Atölye İşçiliği",    "birim_fiyat": 90.0,  "birim": "kg" }
-]
 from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 from typing import List
@@ -24,7 +12,7 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-
+# ----------------- MODEL -----------------
 class IsKalemi(Base):
     __tablename__ = "is_kalemleri"
 
@@ -33,10 +21,9 @@ class IsKalemi(Base):
     birim_fiyat = Column(Float, nullable=False)
     birim = Column(String, nullable=False)
 
-
 Base.metadata.create_all(bind=engine)
 
-
+# ----------------- SCHEMA -----------------
 class IsKalemiCreate(BaseModel):
     ad: str
     birim_fiyat: float
@@ -45,9 +32,22 @@ class IsKalemiCreate(BaseModel):
     class Config:
         orm_mode = True
 
+# ----------------- HAZIR İŞ KALEMİ LİSTESİ -----------------
+HAZIR_IS_KALEMLERI = [
+    { "ad": "Çelik Konstrüksiyon İmalatı",         "birim_fiyat": 450.0, "birim": "kg" },
+    { "ad": "Çelik Konstrüksiyon Montajı",        "birim_fiyat": 500.0, "birim": "kg" },
+    { "ad": "Çelik Konstrüksiyon Demontajı",      "birim_fiyat": 180.0, "birim": "kg" },
+    { "ad": "Sandviç Panel Çatı Montajı",         "birim_fiyat": 350.0, "birim": "m2" },
+    { "ad": "Sandviç Panel Cephe Montajı",        "birim_fiyat": 320.0, "birim": "m2" },
+    { "ad": "Eski Çatı / Panel Sökümü",           "birim_fiyat": 120.0, "birim": "m2" },
+    { "ad": "Trapez Saç Kaplama",                 "birim_fiyat": 220.0, "birim": "m2" },
+    { "ad": "Askı Detayı / Ankraj Montajı",       "birim_fiyat": 150.0, "birim": "adet" },
+    { "ad": "Korkuluk / Platform Montajı",        "birim_fiyat": 400.0, "birim": "m" },
+    { "ad": "Çelik İmalat Atölye İşçiliği",       "birim_fiyat": 90.0,  "birim": "kg" },
+]
 
+# ----------------- APP -----------------
 app = FastAPI(title="Montaj Market API")
-
 
 def get_db():
     db = SessionLocal()
@@ -56,12 +56,12 @@ def get_db():
     finally:
         db.close()
 
-
+# Sadece test için
 @app.get("/test")
 def test_endpoint():
     return {"status": "OK", "info": "API başarılı şekilde yayında!"}
 
-
+# Tekli ekleme
 @app.post("/is_kalemi_ekle")
 def is_kalemi_ekle(kalem: IsKalemiCreate, db: Session = Depends(get_db)):
     db_kalem = IsKalemi(**kalem.dict())
@@ -74,16 +74,27 @@ def is_kalemi_ekle(kalem: IsKalemiCreate, db: Session = Depends(get_db)):
         "id": db_kalem.id,
     }
 
-
+# Listeleme
 @app.get("/is_kalemleri")
 def is_kalemleri(db: Session = Depends(get_db)):
     return db.query(IsKalemi).all()
 
-
-# ✅ TOPLU EKLEME ENDPOINT
+# ✅ TOPLU EKLEME (Swagger'dan JSON liste yollayabilirsin)
 @app.post("/is_kalemi_toplu_ekle")
 def is_kalemi_toplu_ekle(kalemler: List[IsKalemiCreate], db: Session = Depends(get_db)):
     db.add_all([IsKalemi(**k.dict()) for k in kalemler])
     db.commit()
     return {"durum": "başarılı", "adet": len(kalemler)}
 
+# ✅ TEK TIKLA HAZIR İŞ KALEMLERİNİ EKLE
+@app.post("/is_kalemleri_hazir_doldur")
+def is_kalemleri_hazir_doldur(db: Session = Depends(get_db)):
+    # Veritabanında zaten kayıt varsa tekrar doldurmasın
+    mevcut = db.query(IsKalemi).count()
+    if mevcut > 0:
+        return {"durum": "zaten_var", "mevcut_adet": mevcut}
+
+    nesneler = [IsKalemi(**k) for k in HAZIR_IS_KALEMLERI]
+    db.add_all(nesneler)
+    db.commit()
+    return {"durum": "başarılı", "eklenen": len(nesneler)}
