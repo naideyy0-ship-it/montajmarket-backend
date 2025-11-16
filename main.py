@@ -98,3 +98,51 @@ def is_kalemleri_hazir_doldur(db: Session = Depends(get_db)):
     db.add_all(nesneler)
     db.commit()
     return {"durum": "başarılı", "eklenen": len(nesneler)}
+from pydantic import BaseModel
+from typing import List, Optional
+from fastapi import Depends
+from sqlalchemy.orm import Session
+# --- Teklif hesaplama için şemalar ---
+
+class TeklifKalemi(BaseModel):
+    is_kalemi_id: int   # İş kalemi tablosundaki id
+    miktar: float       # Ne kadar yapılacak? (kg, m2, adet vs.)
+
+class TeklifIstegi(BaseModel):
+    kalemler: List[TeklifKalemi]
+    kar_orani: Optional[float] = 0.0   # Örn: 20 girersen %20 kâr
+@app.post("/teklif_hesapla")
+def teklif_hesapla(istek: TeklifIstegi, db: Session = Depends(get_db)):
+    kalem_detaylari = []
+    ara_toplam = 0.0
+
+    for satir in istek.kalemler:
+        is_kalemi = db.query(IsKalemi).get(satir.is_kalemi_id)
+        if not is_kalemi:
+            # Hatalı id gelirse
+            raise HTTPException(status_code=404, detail=f"İş kalemi bulunamadı: {satir.is_kalemi_id}")
+
+        satir_tutar = is_kalemi.birim_fiyat * satir.miktar
+        ara_toplam += satir_tutar
+
+        kalem_detaylari.append({
+            "id": is_kalemi.id,
+            "ad": is_kalemi.ad,
+            "birim": is_kalemi.birim,
+            "birim_fiyat": is_kalemi.birim_fiyat,
+            "miktar": satir.miktar,
+            "tutar": satir_tutar,
+        })
+
+    kar_orani = istek.kar_orani or 0.0
+    kar_tutar = ara_toplam * (kar_orani / 100)
+    genel_toplam = ara_toplam + kar_tutar
+
+    return {
+        "durum": "başarılı",
+        "ara_toplam": ara_toplam,
+        "kar_orani": kar_orani,
+        "kar_tutar": kar_tutar,
+        "genel_toplam": genel_toplam,
+        "kalemler": kalem_detaylari,
+    }
