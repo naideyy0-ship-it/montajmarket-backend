@@ -51,7 +51,7 @@ HAZIR_IS_KALEMLERI = [
 
 # ----------------- APP -----------------
 app = FastAPI(title="Montaj Market API")
-
+app.include_router(auth.router)
 def get_db():
     db = SessionLocal()
     try:
