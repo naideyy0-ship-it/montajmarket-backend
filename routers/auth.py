@@ -9,3 +9,5 @@ def kayit():
 @router.post("/giris")
 def giris():
     return {"durum": "ok", "mesaj": "Giriş başarılı"}
+from routers import auth
+app.include_router(auth.router)
