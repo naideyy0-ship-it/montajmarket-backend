@@ -26,6 +26,8 @@ Base.metadata.create_all(bind=engine)
 # ----------------- SCHEMA -----------------
 class IsKalemiCreate(BaseModel):
     ad: str
+    from routers import auth
+
     birim_fiyat: float
     birim: str
 
