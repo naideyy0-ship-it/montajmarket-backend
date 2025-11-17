@@ -150,4 +150,6 @@ def teklif_hesapla(istek: TeklifIstegi, db: Session = Depends(get_db)):
         "kalemler": kalem_detaylari,
     }
 app.include_router(auth.router)
+from routers import auth
+app.include_router(auth.router)
 
